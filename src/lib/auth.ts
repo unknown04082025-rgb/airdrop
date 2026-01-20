@@ -139,11 +139,69 @@ export async function getLocationInfo(): Promise<{ city: string; country: string
   }
 }
 
+function generateBrowserFingerprint(): string {
+  if (typeof window === 'undefined') return ''
+  
+  const { osName, browserName } = getDeviceInfo()
+  const screenRes = `${window.screen.width}x${window.screen.height}`
+  const colorDepth = window.screen.colorDepth
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const language = navigator.language
+  
+  const fingerprint = `${osName}-${browserName}-${screenRes}-${colorDepth}-${timezone}-${language}`
+  return fingerprint
+}
+
 export async function registerDevice(userId: string, deviceName: string): Promise<{ device: { id: string; device_id: string } | null; error: string | null }> {
   try {
-    const deviceId = generateDeviceId()
     const { osName, osVersion, browserName, browserVersion } = getDeviceInfo()
+    const browserFingerprint = generateBrowserFingerprint()
+    
+    const { data: existingDevices } = await supabase
+      .from('device_pairs')
+      .select('*')
+      .eq('user_id', userId)
+    
+    if (existingDevices && existingDevices.length > 0) {
+      const matchingDevice = existingDevices.find(d => {
+        const deviceFingerprint = `${d.os_name}-${d.browser_name}-${d.screen_resolution || ''}-${d.color_depth || ''}-${d.timezone || ''}-${d.language || ''}`
+        return deviceFingerprint === browserFingerprint || 
+               (d.os_name === osName && d.browser_name === browserName && d.browser_fingerprint === browserFingerprint)
+      })
+      
+      if (matchingDevice) {
+        const { city, country, ip } = await getLocationInfo()
+        
+        const { data, error } = await supabase
+          .from('device_pairs')
+          .update({
+            is_online: true,
+            last_seen: new Date().toISOString(),
+            os_version: osVersion,
+            browser_version: browserVersion,
+            location_city: city,
+            location_country: country,
+            ip_address: ip,
+            browser_fingerprint: browserFingerprint
+          })
+          .eq('id', matchingDevice.id)
+          .select()
+          .single()
+        
+        if (error) {
+          return { device: null, error: error.message }
+        }
+        
+        return { device: data, error: null }
+      }
+    }
+    
+    const deviceId = generateDeviceId()
     const { city, country, ip } = await getLocationInfo()
+    const screenRes = typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : ''
+    const colorDepth = typeof window !== 'undefined' ? window.screen.colorDepth : 0
+    const timezone = typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : ''
+    const language = typeof navigator !== 'undefined' ? navigator.language : ''
     
     const { data, error } = await supabase
       .from('device_pairs')
@@ -158,7 +216,12 @@ export async function registerDevice(userId: string, deviceName: string): Promis
         browser_version: browserVersion,
         location_city: city,
         location_country: country,
-        ip_address: ip
+        ip_address: ip,
+        browser_fingerprint: browserFingerprint,
+        screen_resolution: screenRes,
+        color_depth: colorDepth,
+        timezone: timezone,
+        language: language
       }])
       .select()
       .single()

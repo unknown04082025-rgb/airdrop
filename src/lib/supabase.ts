@@ -27,6 +27,11 @@ export type DevicePair = {
   location_city?: string
   location_country?: string
   ip_address?: string
+  browser_fingerprint?: string
+  screen_resolution?: string
+  color_depth?: number
+  timezone?: string
+  language?: string
 }
 
 export type AccessRequest = {
