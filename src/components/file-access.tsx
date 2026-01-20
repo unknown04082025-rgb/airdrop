@@ -7,7 +7,7 @@ import {
   ChevronRight, Search, Download, Upload, Trash2,
   RefreshCw, Grid, List, Home, HardDrive, Laptop, Circle, Lock,
   Check, X, Eye, MoreVertical, FolderPlus, CloudUpload, Clock, HardDriveUpload,
-  CheckCircle2, XCircle, Timer, AlertCircle, Pause, Play, Infinity, Database
+  CheckCircle2, XCircle, Timer, AlertCircle, Pause, Play, Database
 } from 'lucide-react'
 import { DevicePair, supabase, AccessRequest } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
